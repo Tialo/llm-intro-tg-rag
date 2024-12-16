@@ -1,0 +1,15 @@
+telethon
+nest_asyncio
+sentence-transformers
+langchain
+faiss-cpu
+python-telegram-bot
+python-dotenv
+langchain-huggingface
+
+# TODO: remove
+langchain-ollama
+
+langchain-chroma
+langchain-text-splitters
+langchain-anthropic
