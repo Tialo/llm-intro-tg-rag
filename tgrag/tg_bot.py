@@ -1,8 +1,11 @@
 import os
-from langchain import hub
+
+from dotenv import load_dotenv
+
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
-from dotenv import load_dotenv
+
+from langchain import hub
 from langchain_ollama.llms import OllamaLLM
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_chroma import Chroma
@@ -73,6 +76,7 @@ class RAGTelegramBot:
 
         print("Bot is running...")
         application.run_polling(allowed_updates=Update.ALL_TYPES)
+
 
 if __name__ == '__main__':
     bot = RAGTelegramBot()
