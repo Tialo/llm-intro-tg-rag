@@ -5,8 +5,9 @@ from dotenv import load_dotenv
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 
-from langchain_core.prompts import ChatPromptTemplate, PromptTemplate
+from langchain_core.prompts import ChatPromptTemplate
 from langchain_ollama.llms import OllamaLLM
+from langchain_openai import ChatOpenAI
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_chroma import Chroma
 from langchain_core.output_parsers import StrOutputParser
@@ -15,6 +16,8 @@ from langchain_core.runnables import RunnablePassthrough
 from data import get_documents
 
 load_dotenv()
+
+USE_OLLAMA = int(os.getenv('USE_OLLAMA', 1))
 
 
 DEBUG = False
@@ -31,11 +34,18 @@ class RAGTelegramBot:
             model_kwargs={'device': 'cuda'}
         )
         vector_store = Chroma.from_documents(get_documents(), embeddings)
-        llm = OllamaLLM(model="llama3.2:3b")
+        if USE_OLLAMA:
+            llm = OllamaLLM(model="llama3.2:3b")
+        else:
+            llm = ChatOpenAI(
+                model="gpt-4o-mini",
+                temperature=0,
+            )
         system_prompt = (
             "You are an assistant for question-answering tasks. Use the following pieces of retrieved context to answer the question. "
-            "If you don't know the answer, just say that you don't know. Use three sentences maximum and keep the answer concise."
-            "If context has source of information, provide it in your answer. Use the same language as the question."
+            "If you don't know the answer, just say that you don't know. Use three sentences maximum and keep the answer concise. "
+            "Provide url of the message you use to give an answer, do NOT format it with braces [url](source), if there are few sources, provide all of them. "
+            "Use the same language as the question."
             "\nContext: {context}"
         )
         prompt = ChatPromptTemplate.from_messages(
@@ -90,6 +100,7 @@ class RAGTelegramBot:
 
             await update.message.reply_text(response)
         except Exception as e:
+            raise
             await update.message.reply_text(
                 f"Sorry, I encountered an error: {str(e)}"
             )
