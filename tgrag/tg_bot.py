@@ -44,7 +44,7 @@ class RAGTelegramBot:
                 model="gpt-4o-mini",
                 temperature=0,
             )
-            embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
+            embeddings = OpenAIEmbeddings()
         vector_store = Chroma.from_documents(get_documents(), embeddings)
         system_prompt = (
             "You are an assistant for question-answering tasks. Use the following pieces of retrieved context to answer the question. "
@@ -116,6 +116,8 @@ class RAGTelegramBot:
             
             await update.message.reply_text(response)
         except Exception as e:
+            if DEBUG:
+                raise
             await update.message.reply_text(
                 f"Sorry, I encountered an error: {str(e)}"
             )

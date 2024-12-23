@@ -17,7 +17,7 @@ def get_documents(file_paths : list[str] = None):
 
     documents = []
     for file_path in file_paths:
-        with open(file_path, 'r') as f:
+        with open(file_path, encoding='utf-8') as f:
             messages = json.load(f)
 
         documents.extend(
