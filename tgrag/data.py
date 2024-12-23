@@ -26,8 +26,3 @@ def get_documents(file_paths : list[str] = None):
         )
 
     return documents
-
-
-if __name__ == "__main__":
-    obj = get_documents()
-    print(obj)
