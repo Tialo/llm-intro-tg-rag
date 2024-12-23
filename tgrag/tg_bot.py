@@ -101,7 +101,8 @@ class RAGTelegramBot:
 
             await update.message.reply_text(response)
         except Exception as e:
-            raise
+            if DEBUG:
+                raise
             await update.message.reply_text(
                 f"Sorry, I encountered an error: {str(e)}"
             )
