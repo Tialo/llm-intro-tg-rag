@@ -1,24 +1,27 @@
 import os
-
-from dotenv import load_dotenv
 from collections import defaultdict
 
-from telegram import Update
-from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
-
-from langchain_core.prompts import ChatPromptTemplate
-from langchain_ollama.llms import OllamaLLM
-from langchain_openai import ChatOpenAI, OpenAIEmbeddings
-from langchain_huggingface import HuggingFaceEmbeddings
+from data import get_documents
+from dotenv import load_dotenv
 from langchain_chroma import Chroma
 from langchain_core.output_parsers import StrOutputParser
+from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnablePassthrough
-
-from data import get_documents
+from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_ollama.llms import OllamaLLM
+from langchain_openai import ChatOpenAI, OpenAIEmbeddings
+from telegram import Update
+from telegram.ext import (
+    Application,
+    CommandHandler,
+    ContextTypes,
+    MessageHandler,
+    filters,
+)
 
 load_dotenv()
 
-USE_LOCAL_MODELS = int(os.getenv('USE_LOCAL_MODELS', 0))
+USE_LOCAL_MODELS = int(os.getenv("USE_LOCAL_MODELS", 0))
 
 
 DEBUG = False
@@ -37,7 +40,7 @@ class RAGTelegramBot:
             llm = OllamaLLM(model="llama3.2:3b")
             embeddings = HuggingFaceEmbeddings(
                 model_name="intfloat/multilingual-e5-large",
-                model_kwargs={'device': 'cuda'}
+                model_kwargs={"device": "cuda"},
             )
         else:
             llm = ChatOpenAI(
@@ -73,26 +76,23 @@ class RAGTelegramBot:
             | StrOutputParser()
         )
 
-        self.first_chain = (
-            {
-                "context": vector_store.as_retriever(),
-                "question": RunnablePassthrough(),
-            }
-            | prompt
-        )
+        self.first_chain = {
+            "context": vector_store.as_retriever(),
+            "question": RunnablePassthrough(),
+        } | prompt
         self.last_chain = llm | StrOutputParser()
 
 
     async def start(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Send a message when the command /start is issued."""
         await update.message.reply_text(
-            'Hi! I am your RAG-powered Telegram bot. Send me a question, and I will try to help!'
+            "Hi! I am your RAG-powered Telegram bot. Send me a question, and I will try to help!"
         )
 
     async def help(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Send a message when the command /help is issued."""
         await update.message.reply_text(
-            'Send me any question, and I will search through my knowledge base to help you!'
+            "Send me any question, and I will search through my knowledge base to help you!"
         )
 
     async def handle_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -103,9 +103,11 @@ class RAGTelegramBot:
             prompt_response = f"Based on this context:{self.user_histories[user_id]} \nRespond to this message: {user_message}"
             self.user_histories[user_id].append(f"User: {user_message}")
             if len(self.user_histories[user_id]) > self.history_limit:
-                self.user_histories[user_id] = self.user_histories[user_id][-self.history_limit:]
+                self.user_histories[user_id] = self.user_histories[user_id][
+                    -self.history_limit :
+                ]
 
-            history_context = "\n".join(self.user_histories[user_id])
+            history_context = "\n".join(self.user_histories[user_id])  # noqa
 
             if DEBUG:
                 first = self.first_chain.invoke(user_message)
@@ -116,28 +118,30 @@ class RAGTelegramBot:
 
             self.user_histories[user_id].append(f"Bot: {response}")
             if len(self.user_histories[user_id]) > self.history_limit:
-                self.user_histories[user_id] = self.user_histories[user_id][-self.history_limit:]
-            
+                self.user_histories[user_id] = self.user_histories[user_id][
+                    -self.history_limit :
+                ]
+
             await update.message.reply_text(response)
         except Exception as e:
             if DEBUG:
                 raise
-            await update.message.reply_text(
-                f"Sorry, I encountered an error: {str(e)}"
-            )
+            await update.message.reply_text(f"Sorry, I encountered an error: {str(e)}")
 
     def run(self):
         """Run the bot."""
-        application = Application.builder().token(os.getenv('BOT_TOKEN')).build()
+        application = Application.builder().token(os.getenv("BOT_TOKEN")).build()
 
         application.add_handler(CommandHandler("start", self.start))
         application.add_handler(CommandHandler("help", self.help))
-        application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, self.handle_message))
+        application.add_handler(
+            MessageHandler(filters.TEXT & ~filters.COMMAND, self.handle_message)
+        )
 
         print("Bot is running...")
         application.run_polling(allowed_updates=Update.ALL_TYPES)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     bot = RAGTelegramBot()
     bot.run()

@@ -30,8 +30,9 @@ requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.ruff]
-line-length = 88
 target-version = "py312"
+
+[tool.ruff.lint]
 select = [
     "E",    # pycodestyle errors
     "W",    # pycodestyle warnings
@@ -40,7 +41,7 @@ select = [
     "C",    # flake8-comprehensions
     "B",    # flake8-bugbear
 ]
-ignore = []
+ignore = ["E501"]
 
 [tool.ruff.format]
 quote-style = "double"
