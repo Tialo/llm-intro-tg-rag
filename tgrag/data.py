@@ -1,31 +1,33 @@
 import json
 from pathlib import Path
 
-from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain.docstore.document import Document
 
 proj_path = Path(__file__).parent
 
 
-def get_documents(documents : list[str] = None):
-    if documents is None:
-        documents = [
+def get_documents(file_paths : list[str] = None):
+    if file_paths is None:
+        file_paths = [
             proj_path / "./example_data/1.json",
             proj_path / "./example_data/2.json",
             proj_path / "./example_data/3.json",
             proj_path / "./example_data/4.json",
         ]
 
-    raw_data = []
-    for document in documents:
-        with open(document, 'r') as f:
-            data = json.load(f)
+    documents = []
+    for file_path in file_paths:
+        with open(file_path, 'r') as f:
+            messages = json.load(f)
 
-        raw_data.append("\n".join(msg["message_text"] for msg in data if msg["message_text"]))
+        documents.extend(
+            Document(page_content=msg["message_text"], metadata={"message_url": msg["message_url"]})
+            for msg in messages
+        )
 
-    text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=500,
-        chunk_overlap=20,
-        length_function=len,
-        is_separator_regex=False,
-    )
-    return text_splitter.create_documents(raw_data)
+    return documents
+
+
+if __name__ == "__main__":
+    obj = get_documents()
+    print(obj)

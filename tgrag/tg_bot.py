@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 
-from langchain import hub
+from langchain_core.prompts import ChatPromptTemplate, PromptTemplate
 from langchain_ollama.llms import OllamaLLM
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_chroma import Chroma
@@ -15,6 +15,9 @@ from langchain_core.runnables import RunnablePassthrough
 from data import get_documents
 
 load_dotenv()
+
+
+DEBUG = False
 
 
 class RAGTelegramBot:
@@ -27,9 +30,20 @@ class RAGTelegramBot:
             model_name="intfloat/multilingual-e5-large",
             model_kwargs={'device': 'cuda'}
         )
-        llm = OllamaLLM(model="llama3.2:3b")
         vector_store = Chroma.from_documents(get_documents(), embeddings)
-        prompt = hub.pull("rlm/rag-prompt")
+        llm = OllamaLLM(model="llama3.2:3b")
+        system_prompt = (
+            "You are an assistant for question-answering tasks. Use the following pieces of retrieved context to answer the question. "
+            "If you don't know the answer, just say that you don't know. Use three sentences maximum and keep the answer concise."
+            "If context has source of information, provide it in your answer. Use the same language as the question."
+            "\nContext: {context}"
+        )
+        prompt = ChatPromptTemplate.from_messages(
+            [
+                ("system", system_prompt),
+                ("human", "{question}"),
+            ]
+        )
 
         self.qa_chain = (
             {
@@ -40,6 +54,15 @@ class RAGTelegramBot:
             | llm
             | StrOutputParser()
         )
+
+        self.first_chain = (
+            {
+                "context": vector_store.as_retriever(),
+                "question": RunnablePassthrough(),
+            }
+            | prompt
+        )
+        self.last_chain = llm | StrOutputParser()
 
     async def start(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Send a message when the command /start is issued."""
@@ -58,7 +81,12 @@ class RAGTelegramBot:
         try:
             user_message = update.message.text
 
-            response = self.qa_chain.invoke(user_message)
+            if DEBUG:
+                first = self.first_chain.invoke(user_message)
+                print(first)
+                response = self.last_chain.invoke(first)
+            else:
+                response = self.qa_chain.invoke(user_message)
 
             await update.message.reply_text(response)
         except Exception as e:
