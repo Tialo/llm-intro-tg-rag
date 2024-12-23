@@ -45,7 +45,10 @@ class RAGTelegramBot:
                 temperature=0,
             )
             embeddings = OpenAIEmbeddings()
-        vector_store = Chroma.from_documents(get_documents(), embeddings)
+        if os.path.isdir("vector_store"):
+            vector_store = Chroma(embedding_function=embeddings, persist_directory="vector_store")
+        else:
+            vector_store = Chroma.from_documents(get_documents(), embeddings, persist_directory="vector_store")
         system_prompt = (
             "You are an assistant for question-answering tasks. Use the following pieces of retrieved context to answer the question. "
             "If you don't know the answer, just say that you don't know. Use three sentences maximum and keep the answer concise. "
@@ -78,6 +81,7 @@ class RAGTelegramBot:
             | prompt
         )
         self.last_chain = llm | StrOutputParser()
+
 
     async def start(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Send a message when the command /start is issued."""
