@@ -1,0 +1,49 @@
+[tool.poetry]
+name = "llm-intro-tg-rag"
+version = "0.1.0"
+description = ""
+authors = ["Your Name <you@example.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "==3.12.3"
+telethon = "^1.38.1"
+nest-asyncio = "^1.6.0"
+sentence-transformers = "^3.3.1"
+langchain = "^0.3.13"
+faiss-cpu = "^1.9.0.post1"
+python-telegram-bot = "^21.9"
+python-dotenv = "^1.0.1"
+langchain-huggingface = "^0.1.2"
+langchain-ollama = "^0.2.2"
+langchain-chroma = "^0.1.4"
+langchain-text-splitters = "^0.3.4"
+langchain-openai = "^0.2.14"
+
+
+[tool.poetry.group.dev.dependencies]
+ruff = "^0.8.4"
+pre-commit = "^4.0.1"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # isort
+    "C",    # flake8-comprehensions
+    "B",    # flake8-bugbear
+]
+ignore = []
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
