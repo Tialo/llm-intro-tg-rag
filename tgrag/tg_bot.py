@@ -7,7 +7,7 @@ from telegram.ext import Application, CommandHandler, MessageHandler, filters, C
 
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_ollama.llms import OllamaLLM
-from langchain_openai import ChatOpenAI
+from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_chroma import Chroma
 from langchain_core.output_parsers import StrOutputParser
@@ -17,7 +17,7 @@ from data import get_documents
 
 load_dotenv()
 
-USE_OLLAMA = int(os.getenv('USE_OLLAMA', 1))
+USE_LOCAL_MODELS = int(os.getenv('USE_LOCAL_MODELS', 0))
 
 
 DEBUG = False
@@ -29,18 +29,19 @@ class RAGTelegramBot:
         self.setup_rag()
 
     def setup_rag(self):
-        embeddings = HuggingFaceEmbeddings(
-            model_name="intfloat/multilingual-e5-large",
-            model_kwargs={'device': 'cuda'}
-        )
         vector_store = Chroma.from_documents(get_documents(), embeddings)
-        if USE_OLLAMA:
+        if USE_LOCAL_MODELS:
             llm = OllamaLLM(model="llama3.2:3b")
+            embeddings = HuggingFaceEmbeddings(
+                model_name="intfloat/multilingual-e5-large",
+                model_kwargs={'device': 'cuda'}
+            )
         else:
             llm = ChatOpenAI(
                 model="gpt-4o-mini",
                 temperature=0,
             )
+            embeddings = OpenAIEmbeddings()
         system_prompt = (
             "You are an assistant for question-answering tasks. Use the following pieces of retrieved context to answer the question. "
             "If you don't know the answer, just say that you don't know. Use three sentences maximum and keep the answer concise. "
