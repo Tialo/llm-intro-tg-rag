@@ -21,12 +21,15 @@ USE_OLLAMA = int(os.getenv('USE_OLLAMA', 1))
 
 
 DEBUG = False
+HISTORY_LIMIT = 10
 
 
 class RAGTelegramBot:
     def __init__(self):
         self.qa_chain = None
-        self.setup_rag()
+        self.user_histories = defaultdict(list)
+        self.history_limit = HISTORY_LIMIT
+        self.setup_rag()    
 
     def setup_rag(self):
         embeddings = HuggingFaceEmbeddings(
@@ -90,13 +93,25 @@ class RAGTelegramBot:
         """Handle incoming messages and respond using RAG."""
         try:
             user_message = update.message.text
+            user_id = update.message.from_user.id
 
+            self.user_histories[user_id].append(f"User: {user_message}")
+            if len(self.user_histories[user_id]) > self.history_limit:
+                self.user_histories[user_id] = self.user_histories[user_id][-self.history_limit:]
+
+            history_context = "\n".join(self.user_histories[user_id])
+            
             if DEBUG:
                 first = self.first_chain.invoke(user_message)
                 print(first)
-                response = self.last_chain.invoke(first)
+                response = self.qa_chain.invoke({"context": history_context, "question": user_message})
+
             else:
-                response = self.qa_chain.invoke(user_message)
+                response = self.qa_chain.invoke({"context": history_context, "question": user_message})
+
+            self.user_histories[user_id].append(f"Bot: {response}")
+            if len(self.user_histories[user_id]) > self.history_limit:
+                self.user_histories[user_id] = self.user_histories[user_id][-self.history_limit:]
 
             await update.message.reply_text(response)
         except Exception as e:
