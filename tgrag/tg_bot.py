@@ -29,7 +29,6 @@ class RAGTelegramBot:
         self.setup_rag()
 
     def setup_rag(self):
-        vector_store = Chroma.from_documents(get_documents(), embeddings)
         if USE_LOCAL_MODELS:
             llm = OllamaLLM(model="llama3.2:3b")
             embeddings = HuggingFaceEmbeddings(
@@ -42,6 +41,7 @@ class RAGTelegramBot:
                 temperature=0,
             )
             embeddings = OpenAIEmbeddings()
+        vector_store = Chroma.from_documents(get_documents(), embeddings)
         system_prompt = (
             "You are an assistant for question-answering tasks. Use the following pieces of retrieved context to answer the question. "
             "If you don't know the answer, just say that you don't know. Use three sentences maximum and keep the answer concise. "
