@@ -1,5 +1,6 @@
 .venv
 venv
 .env
+vector_store
 
 **/__pycache__
