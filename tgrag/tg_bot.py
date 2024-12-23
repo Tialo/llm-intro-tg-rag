@@ -1,6 +1,7 @@
 import os
 
 from dotenv import load_dotenv
+from collections import defaultdict
 
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
@@ -21,15 +22,17 @@ USE_LOCAL_MODELS = int(os.getenv('USE_LOCAL_MODELS', 0))
 
 
 DEBUG = False
+HISTORY_LIMIT = 10
 
 
 class RAGTelegramBot:
     def __init__(self):
         self.qa_chain = None
+        self.user_histories = defaultdict(list)
+        self.history_limit = HISTORY_LIMIT
         self.setup_rag()
 
     def setup_rag(self):
-        vector_store = Chroma.from_documents(get_documents(), embeddings)
         if USE_LOCAL_MODELS:
             llm = OllamaLLM(model="llama3.2:3b")
             embeddings = HuggingFaceEmbeddings(
@@ -41,7 +44,8 @@ class RAGTelegramBot:
                 model="gpt-4o-mini",
                 temperature=0,
             )
-            embeddings = OpenAIEmbeddings()
+            embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
+        vector_store = Chroma.from_documents(get_documents(), embeddings)
         system_prompt = (
             "You are an assistant for question-answering tasks. Use the following pieces of retrieved context to answer the question. "
             "If you don't know the answer, just say that you don't know. Use three sentences maximum and keep the answer concise. "
@@ -91,17 +95,27 @@ class RAGTelegramBot:
         """Handle incoming messages and respond using RAG."""
         try:
             user_message = update.message.text
+            user_id = update.message.from_user.id
+            prompt_response = f"Based on this context:{self.user_histories[user_id]} \nRespond to this message: {user_message}"
+            self.user_histories[user_id].append(f"User: {user_message}")
+            if len(self.user_histories[user_id]) > self.history_limit:
+                self.user_histories[user_id] = self.user_histories[user_id][-self.history_limit:]
+
+            history_context = "\n".join(self.user_histories[user_id])
 
             if DEBUG:
                 first = self.first_chain.invoke(user_message)
                 print(first)
                 response = self.last_chain.invoke(first)
             else:
-                response = self.qa_chain.invoke(user_message)
+                response = self.qa_chain.invoke(prompt_response)
 
+            self.user_histories[user_id].append(f"Bot: {response}")
+            if len(self.user_histories[user_id]) > self.history_limit:
+                self.user_histories[user_id] = self.user_histories[user_id][-self.history_limit:]
+            
             await update.message.reply_text(response)
         except Exception as e:
-            raise
             await update.message.reply_text(
                 f"Sorry, I encountered an error: {str(e)}"
             )
