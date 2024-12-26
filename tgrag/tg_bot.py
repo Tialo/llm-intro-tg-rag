@@ -1,7 +1,9 @@
+import asyncio
 import os
 from collections import defaultdict
+from datetime import datetime
 
-from data import get_documents
+from data import MessageTracker, fetch_new_messages, get_documents
 from dotenv import load_dotenv
 from langchain_chroma import Chroma
 from langchain_core.output_parsers import StrOutputParser
@@ -22,7 +24,8 @@ from telegram.ext import (
 load_dotenv()
 
 USE_LOCAL_MODELS = int(os.getenv("USE_LOCAL_MODELS", 0))
-
+UPDATE_INTERVAL = int(os.getenv("UPDATE_INTERVAL", 1200))
+MONITORED_CHANNELS = os.getenv("MONITORED_CHANNELS", "").split(",")
 
 DEBUG = False
 HISTORY_LIMIT = 10
@@ -33,12 +36,15 @@ class RAGTelegramBot:
         self.qa_chain = None
         self.user_histories = defaultdict(list)
         self.history_limit = HISTORY_LIMIT
+        self.vector_store = None
+        self.message_tracker = MessageTracker()
+        self.embeddings = None
         self.setup_rag()
 
     def setup_rag(self):
         if USE_LOCAL_MODELS:
             llm = OllamaLLM(model="llama3.2:3b")
-            embeddings = HuggingFaceEmbeddings(
+            self.embeddings = HuggingFaceEmbeddings(
                 model_name="intfloat/multilingual-e5-large",
                 model_kwargs={"device": "cuda"},
             )
@@ -47,11 +53,15 @@ class RAGTelegramBot:
                 model="gpt-4o-mini",
                 temperature=0,
             )
-            embeddings = OpenAIEmbeddings()
+            self.embeddings = OpenAIEmbeddings()
         if os.path.isdir("vector_store"):
-            vector_store = Chroma(embedding_function=embeddings, persist_directory="vector_store")
+            self.vector_store = Chroma(
+                embedding_function=self.embeddings, persist_directory="vector_store"
+            )
         else:
-            vector_store = Chroma.from_documents(get_documents(), embeddings, persist_directory="vector_store")
+            self.vector_store = Chroma.from_documents(
+                get_documents(), self.embeddings, persist_directory="vector_store"
+            )
         system_prompt = (
             "You are an assistant for question-answering tasks. Use the following pieces of retrieved context to answer the question. "
             "If you don't know the answer, just say that you don't know. Use three sentences maximum and keep the answer concise. "
@@ -68,7 +78,7 @@ class RAGTelegramBot:
 
         self.qa_chain = (
             {
-                "context": vector_store.as_retriever(),
+                "context": self.vector_store.as_retriever(),
                 "question": RunnablePassthrough(),
             }
             | prompt
@@ -76,12 +86,34 @@ class RAGTelegramBot:
             | StrOutputParser()
         )
 
+        # Split chains for debugging
         self.first_chain = {
-            "context": vector_store.as_retriever(),
+            "context": self.vector_store.as_retriever(),
             "question": RunnablePassthrough(),
         } | prompt
         self.last_chain = llm | StrOutputParser()
 
+    async def update_index(self):
+        while True:
+            try:
+                print(f"[{datetime.now()}] Checking for new messages...")
+                new_documents = await fetch_new_messages(
+                    MONITORED_CHANNELS, self.message_tracker
+                )
+
+                if new_documents:
+                    print(
+                        f"[{datetime.now()}] Adding {len(new_documents)} new documents to the vector store"
+                    )
+                    self.vector_store.add_documents(new_documents)
+                    print(f"[{datetime.now()}] Successfully added new documents")
+                else:
+                    print(f"[{datetime.now()}] No new messages found")
+
+            except Exception as e:
+                print(f"[{datetime.now()}] Error updating index: {e}")
+
+            await asyncio.sleep(UPDATE_INTERVAL)
 
     async def start(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Send a message when the command /start is issued."""
@@ -106,8 +138,6 @@ class RAGTelegramBot:
                 self.user_histories[user_id] = self.user_histories[user_id][
                     -self.history_limit :
                 ]
-
-            history_context = "\n".join(self.user_histories[user_id])  # noqa
 
             if DEBUG:
                 first = self.first_chain.invoke(user_message)
@@ -137,6 +167,7 @@ class RAGTelegramBot:
         application.add_handler(
             MessageHandler(filters.TEXT & ~filters.COMMAND, self.handle_message)
         )
+        asyncio.get_event_loop().create_task(self.update_index())
 
         print("Bot is running...")
         application.run_polling(allowed_updates=Update.ALL_TYPES)
