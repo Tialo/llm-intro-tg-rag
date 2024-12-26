@@ -139,8 +139,6 @@ class RAGTelegramBot:
                     -self.history_limit :
                 ]
 
-            history_context = "\n".join(self.user_histories[user_id])  # noqa
-
             if DEBUG:
                 first = self.first_chain.invoke(user_message)
                 print(first)
