@@ -72,7 +72,13 @@ The project follows these code style rules:
 
 ## Usage
 
-TODO: Add bot usage instructions
+- Complete installation
+- Create .env file with following variables:
+  1. OPENAI_API_KEY
+  2. OPENAI_API_BASE (for specifying base url to openai-like api)
+  3. USE_LOCAL_MODELS=1 (to use local models instead of api)
+  4. MONITORED_CHANNELS (list of tg channels separated with commas)
+- Run `python tgrag/tb_bot.py`
 
 ## License
 
