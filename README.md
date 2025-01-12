@@ -78,6 +78,7 @@ The project follows these code style rules:
   2. OPENAI_API_BASE (for specifying base url to openai-like api)
   3. USE_LOCAL_MODELS=1 (to use local models instead of api)
   4. MONITORED_CHANNELS (list of tg channels separated with commas)
+  5. BOT_TOKEN ([telegram bot token](https://core.telegram.org/bots/faq#how-do-i-create-a-bot) from Botfather)
 - Run `python tgrag/tb_bot.py`
 
 ## License
