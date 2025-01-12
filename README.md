@@ -79,6 +79,8 @@ The project follows these code style rules:
   3. USE_LOCAL_MODELS=1 (to use local models instead of api)
   4. MONITORED_CHANNELS (list of tg channels separated with commas)
   5. BOT_TOKEN ([telegram bot token](https://core.telegram.org/bots/faq#how-do-i-create-a-bot) from Botfather)
+  6. TG_API_ID (to fetch new messages [guide](https://core.telegram.org/api/obtaining_api_id))
+  7. TG_API_HASH (to fetch new messages [guide](https://core.telegram.org/api/obtaining_api_id))
 - Run `python tgrag/tb_bot.py`
 
 ## License
