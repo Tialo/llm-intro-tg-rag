@@ -83,6 +83,7 @@ The project follows these code style rules:
   7. TG_API_HASH (to fetch new messages [guide](https://core.telegram.org/api/obtaining_api_id))
 - Run `python tgrag/tb_bot.py`
 
-## License
+## Metrics
 
-TODO: Add license information
+RAG was evaluated by Model Assited Expert Judgement.
+Result metric is 8/10 
